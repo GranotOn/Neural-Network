@@ -1,5 +1,3 @@
-
-
 from Layer import Layer
 import numpy as np
 
