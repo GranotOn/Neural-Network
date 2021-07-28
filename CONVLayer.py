@@ -4,51 +4,108 @@ import numpy as np
 
 
 class CONVLayer(Layer):
-    # inherit from base class Layer
+    def __init__(self,
+                 input_size,
+                 filter_size,
+                 out_feature_maps,
+                 stride=1,
+                 same_padding=True):
+        self.inputs = None
+        self.outputs = None
+        # Setting up all the parameters
+        self.stride = stride
+        self.same_padding = same_padding
+        # input_depth is number of channels in the Input
+        self.input_depth, self.input_height, self.input_width = input_size
+        self.filter_height, self.filter_width = filter_size
+        self.output_depth = out_feature_maps
+        self.output_height, self.output_width = self.input_height, self.input_width
 
-    def __init__(self, input_shape, kernel_shape, layer_depth):
-        self.input_shape = input_shape
-        self.input_depth = input_shape[2]
-        self.kernel_shape = kernel_shape
-        self.layer_depth = layer_depth
+        self.modified_inputs = None
+        self.filter_weights = np.random.standard_normal(
+            (out_feature_maps, self.input_depth, self.filter_height,
+             self.filter_width))
 
-        self.output_shape = (input_shape[0] - kernel_shape[0] + 1,
-                             input_shape[1] - kernel_shape[1] + 1, layer_depth)
-        self.weights = np.random.rand(kernel_shape[0], kernel_shape[1],
-                                      self.input_depth, layer_depth) - 0.03
-        self.bias = np.random.rand(layer_depth) - 0.5
+        if not same_padding:
+            self.output_height, self.output_width = (self.input_height - self.filter_height) // stride + 1, \
+                                                    (self.input_width - self.filter_width) // stride + 1
+        self.biases = np.random.randn(out_feature_maps, self.output_height,
+                                      self.output_width)
 
-    def forward_propagation(self, input_data):
-        self.input = input_data
-        self.output = np.zeros(self.output_shape)
+    def _add_padding(self, feature_maps):
+        padding_height = self.filter_height // 2
+        padding_width = self.filter_width // 2
+        depth, height, width = feature_maps.shape
+        # Assuming stride of size 1
+        modified_inputs = np.zeros((depth, height + self.filter_height - 1,
+                                    width + self.filter_width - 1))
+        modified_inputs[:, padding_height:-padding_height,
+                        padding_width:-padding_width] = feature_maps
+        return modified_inputs
 
-        for k in range(self.layer_depth):
-            for d in range(self.input_depth):
-                self.output[:, :, k] += signal.correlate2d(
-                    self.input[:, :, d], self.weights[:, :, d, k],
-                    'same   ') + self.bias[k]
+    def _convolve_forward(self, inputs, filter_weights):
+        outputs = np.zeros(
+            (self.output_depth, self.output_height, self.output_width))
+        for out_feature_map_index in range(self.output_depth):
+            for row in range(self.output_height):
+                for col in range(self.output_width):
+                    target_input = inputs[:, row:(row + self.filter_height),
+                                          col:(col + self.filter_width)]
+                    outputs[out_feature_map_index][row][col] = \
+                        np.sum(filter_weights[out_feature_map_index] * target_input)
+        return outputs
 
-        print(self.output)
-        return self.output
+    def forward_propagation(self, inputs):
+        self.inputs = inputs
+        self.modified_inputs = inputs
+        if self.same_padding:
+            self.modified_inputs = self._add_padding(self.inputs)
+        # self.outputs = self.biases + self._convolve_forward(self.modified_inputs, self.filter_weights)
+        # return self.outputs
+        return self._convolve_forward(self.modified_inputs,
+                                      self.filter_weights) + self.biases
 
-    def backward_propagation(self, output_error, learning_rate):
-        in_error = np.zeros(self.input_shape)
-        delta_weights = np.zeros((self.kernel_shape[0], self.kernel_shape[1],
-                                  self.input_depth, self.layer_depth))
-        delta_bias = np.zeros(self.layer_depth)
+    def _weights_derivatives(self, modified_inputs, output_gradient):
+        """
+        :param modified_inputs: Cached modified(padded) inputs for back propagation
+        :param output_gradient: dL/dY
+        :return: dL/dW
+        """
+        weight_derivatives = np.zeros((self.output_depth, self.input_depth,
+                                       self.filter_height, self.filter_width))
+        for out_index in range(self.output_depth):
+            for in_index in range(self.input_depth):
+                for row in range(self.filter_height):
+                    for col in range(self.filter_width):
+                        target_input = \
+                            modified_inputs[in_index, row:(row + self.input_height), col:(col + self.input_width)]
+                        weight_derivatives[out_index][in_index][row][col] = \
+                            np.sum(target_input * output_gradient[out_index])
+        return weight_derivatives
 
-        for k in range(self.layer_depth):
-            for d in range(self.input_depth):
-                in_error[:, :,
-                         d] += signal.convolve2d(output_error[:, :, k],
-                                                 self.weights[:, :, d,
-                                                              k], 'full')
-                delta_weights[:, :, d,
-                              k] = signal.correlate2d(self.input[:, :, d],
-                                                      output_error[:, :,
-                                                                   k], 'valid')
-            delta_bias[k] = self.layer_depth * np.sum(output_error[:, :, k])
+    def _convolve_backward(self, output_gradient, filter_weights):
+        # Flip the filter weights
+        filter_weights = filter_weights[:, :, ::-1, ::-1]
+        results = np.zeros(
+            (self.input_depth, self.input_height, self.input_width))
+        for input_feature_map_index in range(self.input_depth):
+            for row in range(self.input_height):
+                for col in range(self.input_width):
+                    target_output = output_gradient[:,
+                                                    row:(row +
+                                                         self.filter_height),
+                                                    col:(col +
+                                                         self.filter_width)]
+                    results[input_feature_map_index][row][col] = \
+                        np.sum(filter_weights[:, input_feature_map_index] * target_output)
+        return results
 
-        self.weights -= learning_rate * delta_weights
-        self.bias -= learning_rate * delta_bias
-        return in_error
+    def backward_propagation(self, output_gradient, learning_rate=0.9):
+        modified_gradient = self._add_padding(output_gradient)
+        # dL/dX Input Gradient
+        input_gradient = self._convolve_backward(modified_gradient,
+                                                 self.filter_weights)
+        self.biases -= learning_rate * output_gradient
+        self.filter_weights -= learning_rate * self._weights_derivatives(
+            self.modified_inputs, output_gradient)
+        return input_gradient

@@ -4,6 +4,7 @@ import numpy as np
 
 validate_file = "validate.csv"
 
+
 output = []
 feature_set = []
 
@@ -25,7 +26,8 @@ with open(validate_file) as csv_file:
         feature_set.append(set)
 
 x_validate = np.array(feature_set)
-x_validate = x_validate.reshape(x_validate.shape[0], 1, 3072)
+#x_validate = x_validate.reshape(x_validate.shape[0], 1, 3072)
+x_validate = x_validate.reshape(x_validate.shape[0], 3, 32, 32)
 x_validate = x_validate.astype('float32')
 
 y_validate = np.array(output)

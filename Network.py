@@ -15,16 +15,11 @@ class Network:
         self.loss_prime = loss_prime
 
     def predict(self, input_data):
-        samples = len(input_data)
-        result = []
+        layer_input = input_data
+        for layer in self.layers[:-1]:
+            layer_input = layer.forward_propagation(layer_input)
 
-        for i in range(samples):  # fastforward
-            output = input_data[i]
-            for layer in self.layers:
-                output = layer.forward_propagation(output)
-            result.append(output)
-
-        return result
+        return layer_input
 
     def fit(self, x_train, y_train, epochs, learning_rate):  # Training method
         samples = len(x_train)
@@ -37,24 +32,20 @@ class Network:
                 # fastforward
                 output = x_train[j]
 
-                for layer in self.layers:
-                    output = layer.forward_propagation(output)
+                loss_layer_input = self.predict(output)
 
-                if (j < 5):
-                    print('%d : %s - %s' % (j, output, y_train[j]))
+                loss_layer = self.layers[-1]
 
-                # compute loss
+                train_sample_error = loss_layer.get_loss(
+                    loss_layer_input, y_train[j])
 
-                err += self.loss(y_train[j], output)
+                err += train_sample_error
 
-                # back propagation
+                layer_gradient = loss_layer.get_gradient()
 
-                error = self.loss_prime(y_train[j], output)
+                for layer in self.layers[-2::-1]:  #Reversed
+                    layer_gradient = layer.backward_propagation(layer_gradient)
 
-                for layer in reversed(self.layers):
-                    error = layer.backward_propagation(error, learning_rate)
-
-            learning_rate *= 0.7
             # calculate average error on all samples
             err /= samples
             print('epoch %d/%d error=%f' % (i + 1, epochs, err))

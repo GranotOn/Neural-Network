@@ -4,7 +4,7 @@ class Layer:
         self.output = None
 
     # Compute the output of Y to input X
-    def forward_propagation(self, input):
+    def forward_propogation(self, input):
         raise NotImplementedError
 
     # Computes dE / dX for a given dE / dY
