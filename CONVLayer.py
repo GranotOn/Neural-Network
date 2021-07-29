@@ -100,7 +100,7 @@ class CONVLayer(Layer):
                         np.sum(filter_weights[:, input_feature_map_index] * target_output)
         return results
 
-    def backward_propagation(self, output_gradient, learning_rate=0.9):
+    def backward_propagation(self, output_gradient, learning_rate=0.01):
         modified_gradient = self._add_padding(output_gradient)
         # dL/dX Input Gradient
         input_gradient = self._convolve_backward(modified_gradient,

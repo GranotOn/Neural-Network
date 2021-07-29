@@ -14,7 +14,7 @@ class SoftmaxLayer(Layer):
         self.outputs = exponents / exponents_sum
         return self.outputs
 
-    def backward_propagation(self, output_gradient, learning_rate=0.2):
+    def backward_propagation(self, output_gradient, learning_rate=0.02):
         """
         :param output_gradient:
         :return:

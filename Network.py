@@ -29,10 +29,15 @@ class Network:
             err = 0
 
             for j in range(samples):
+                print(j)
+
                 # fastforward
                 output = x_train[j]
 
                 loss_layer_input = self.predict(output)
+
+                if (j < 5):
+                    print(loss_layer_input)
 
                 loss_layer = self.layers[-1]
 
@@ -43,7 +48,7 @@ class Network:
 
                 layer_gradient = loss_layer.get_gradient()
 
-                for layer in self.layers[-2::-1]:  #Reversed
+                for i, layer in enumerate(self.layers[-2::-1]):  #Reversed
                     layer_gradient = layer.backward_propagation(layer_gradient)
 
             # calculate average error on all samples

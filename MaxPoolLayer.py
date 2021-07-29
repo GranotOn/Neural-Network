@@ -19,7 +19,7 @@ class MaxPoolLayer(Layer):
             for row in range(0, height, 2):
                 for col in range(0, width, 2):
                     self.outputs[depth_index][row // 2][col // 2] = np.max(
-                        inputs[depth_index, row:row + 2, col:col + 2])
+                        inputs[depth_index, row:row + 2, col:col + 2]) / 255
                     # Figure out the row index and the column index of the Max Element in the 2x2 Grid
                     max_index = np.argmax(inputs[depth_index, row:row + 2,
                                                  col:col + 2])

@@ -73,20 +73,10 @@ if model == 'n':
 
     net.add(FlattenLayer())
 
-    net.add(FCLayer(2**11, 128))
+    net.add(FCLayer(2**11, 512))
     net.add(ActivationLayer(sigmoid, sigmoid_prime))
 
-    net.add(FCLayer(128, 256))
-    net.add(ActivationLayer(sigmoid, sigmoid_prime))
-
-    net.add(FCLayer(256, 512))
-    net.add(ActivationLayer(sigmoid, sigmoid_prime))
-
-    net.add(FCLayer(512, 1024))
-    net.add(ActivationLayer(sigmoid, sigmoid_prime))
-
-    net.add(FCLayer(1024, 10))
-
+    net.add(FCLayer(512, 10))
     net.add(SoftmaxLayer())
     net.add(LossLayer(cross_entropy, cross_entropy_prime))
 
